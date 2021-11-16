@@ -1,0 +1,214 @@
+---
+title: "Georgia Data Inventory"
+output: rmarkdown::github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(xtable)
+library(tidyverse)
+library(knitr)
+library(ggridges)
+library(hrbrthemes)
+library(gridExtra)
+library(plotly)
+```
+
+```{r echo = FALSE}
+ga_all_yrs <- read_csv('C:/Users/ggorski/OneDrive - DOI/USGS_ML/WaterUse/github/municipal-water-loss-ml/1_data_inventory/out/georgia_all_years.csv',show_col_types = FALSE)
+```
+##### A look at the water loss data for all years (2012-2019) for all municipalities broken down by population served  
+<br>
+<br>
+
+```{r echo=FALSE, results='asis'}
+
+x <- ga_all_yrs %>%
+  filter(!is.na(Population)) %>%
+  mutate(ntiles = ntile(Population,5)) %>%
+  group_by(ntiles) %>%
+  summarise(min_pop = min(Population), max_pop = max(Population), unique_municipalities = n_distinct(WSID), mean_supplied = mean(Supplied), mean_lost = mean(Water.Losses)) %>%
+  mutate(mean_lost_frac = (mean_lost/mean_supplied)*100) %>%
+  select(!c(mean_lost, ntiles))
+
+#row.names(x) <- c('Least Populous','','','','Most Populous')
+kable(x, digits = 1, col.names = c('Minimum Population','Maximum Population','Unique Municipalities','Mean Supplied Water (Mil Gal/Yr)','Mean Water Lost (%)'),
+        row.names = FALSE)
+
+
+```
+
+```{r echo=FALSE, warning = FALSE, message = FALSE, fig.width=12, fig.height=4}
+data <- ga_all_yrs %>%
+  filter(!is.na(Population)) %>%
+  mutate(ntiles = ntile(Population,5)) %>%
+  group_by(ntiles) %>%
+  mutate(Supplied_per_Capita = Supplied/Population) %>%
+  mutate(Percent_water_loss = (Water.Losses/Supplied)*100)
+
+data$ntiles_f <- ordered(data$ntiles, levels = c(1,2,3,4,5), labels = c('< 4,853', '4,855 - 7,062', '7,073 - 13,050','13,260 - 28,025','> 28,1832'))
+  
+plot1 <- ggplot(data, aes(x = Supplied_per_Capita, y = ntiles_f, fill = ntiles_f))+
+  geom_density_ridges(rel_min_height = 0.005, scale = 0.75) +
+  theme_ipsum()+
+  xlim(0,0.25)+
+  xlab('Gallons supplied per capita (Million Gallons/Yr/Person)')+
+  ylab('Population Served')+
+  labs(title = 'Water supplied 2012-2019')+
+  theme(legend.position = 'none', plot.title = element_text(size = 14, face = "bold"),
+        axis.text = element_text(size = 13),
+        axis.title.y = element_text(size = 13),
+        axis.title.x = element_text(size = 13))
+
+
+plot2 <- ggplot(data, aes(x = Percent_water_loss, y = ntiles_f, fill = ntiles_f))+
+  geom_density_ridges(rel_min_height = 0.01, scale = 1.35) +
+  theme_ipsum()+
+  xlim(0,80)+
+  xlab('Water Lost (% of Supplied)')+
+  ylab('Population Served')+
+  labs(title = 'Water lost 2012-2019')+
+  theme(legend.position = 'none', plot.title = element_text(size = 14, face = "bold"),
+        axis.text = element_text(size = 13),
+        axis.title.y = element_text(size = 13),
+        axis.title.x = element_text(size = 13))
+
+grid.arrange(plot1, plot2, ncol = 2)
+```
+
+***
+
+##### Looking at the supply and loss data through time, hover over the dots to view the municipality. It doesn't look like there is a clear trend with time, but maybe the outliers are interesting?  
+<br>
+<br>
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=4}
+t <- data %>%
+  filter(ntiles == 5) %>%
+  group_by(Year) %>%
+  pivot_longer(cols = c('Supplied','Water.Losses')) %>%
+  select(Year, Util, ntiles, name, value)
+
+plot_ly(t, x = ~Year, y = ~value, color = ~name, type = 'box', text = ~Util,colors = c('#0C4B8E','#BF382A'))%>% 
+  layout(boxmode = "group", 
+         xaxis = list(title='Year'), 
+         yaxis = list(title='Water (Million Gallons)'),
+         title = 'Water Supplied Municipalities Population > 28,183')
+```
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=4}
+t <- data %>%
+  filter(ntiles == 4) %>%
+  group_by(Year) %>%
+  pivot_longer(cols = c('Supplied','Water.Losses')) %>%
+  select(Year, Util, ntiles, name, value)
+
+plot_ly(t, x = ~Year, y = ~value, color = ~name, type = 'box', text = ~Util,colors = c('#0C4B8E','#BF382A'))%>% 
+  layout(boxmode = "group", 
+         xaxis = list(title='Year'), 
+         yaxis = list(title='Water (Million Gallons)'),
+         title = 'Water Supplied Municipalities Population 13,260 - 28,025')
+```
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=4}
+t <- data %>%
+  filter(ntiles == 3) %>%
+  group_by(Year) %>%
+  pivot_longer(cols = c('Supplied','Water.Losses')) %>%
+  select(Year, Util, ntiles, name, value)
+
+plot_ly(t, x = ~Year, y = ~value, color = ~name, type = 'box', text = ~Util,colors = c('#0C4B8E','#BF382A'))%>% 
+  layout(boxmode = "group", 
+         xaxis = list(title='Year'), 
+         yaxis = list(title='Water (Million Gallons)'),
+         title = 'Water Supplied Municipalities Population 7,073 - 13,050')
+```
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=4}
+t <- data %>%
+  filter(ntiles == 2) %>%
+  group_by(Year) %>%
+  pivot_longer(cols = c('Supplied','Water.Losses')) %>%
+  select(Year, Util, ntiles, name, value)
+
+plot_ly(t, x = ~Year, y = ~value, color = ~name, type = 'box', text = ~Util,colors = c('#0C4B8E','#BF382A'))%>% 
+  layout(boxmode = "group", 
+         xaxis = list(title='Year'), 
+         yaxis = list(title='Water (Million Gallons)'),
+         title = 'Water Supplied Municipalities Population 4,855 - 7,062')
+```
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=4}
+t <- data %>%
+  filter(ntiles == 1) %>%
+  group_by(Year) %>%
+  pivot_longer(cols = c('Supplied','Water.Losses')) %>%
+  select(Year, Util, ntiles, name, value)
+
+plot_ly(t, x = ~Year, y = ~value, color = ~name, type = 'box', text = ~Util,colors = c('#0C4B8E','#BF382A'))%>% 
+  layout(boxmode = "group", 
+         xaxis = list(title='Year'), 
+         yaxis = list(title='Water (Million Gallons)'),
+         title = 'Water Supplied Municipalities Population < 4,853')
+```
+
+***
+
+##### Crossplots of losses with length of mains, pressure, and number of connections broken down by population served  
+<br>
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=5}
+g <- data %>%
+  ggplot(aes(x = Length.of.Mains, y = Real.Losses, fill= ntiles_f, text = paste(Util,Year,sep = ' | ')))+
+  geom_point(alpha = 0.6, stroke= 0.25)+
+  facet_wrap(~ntiles_f, scales = c('free'), nrow = 1)+
+  theme_ipsum()+
+  theme(legend.position = 'none')+
+  xlab('Length of Mains (Miles)')+
+  ylab('Real Losses (Million Gallons)')+
+  labs(title = 'Length of Mains')+
+    theme(legend.position = 'none', plot.title = element_text(size = 14, face = "bold"),
+        axis.text = element_text(size = 13),
+        axis.title.y = element_text(size = 13),
+        axis.title.x = element_text(size = 13))
+  
+ggplotly(g, tooltip = 'text')
+```
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=5}
+g <- data %>%
+  ggplot(aes(x = Service.COnnections, y = Real.Losses, fill= ntiles_f, text = paste(Util,Year,sep = ' | ')))+
+  geom_point(alpha = 0.6, stroke= 0.25)+
+  facet_wrap(~ntiles_f, scales = c('free'), nrow = 1)+
+  theme_ipsum()+
+  theme(legend.position = 'none')+
+  xlab('Service Connections')+
+  ylab('Real Losses (Million Gallons)')+
+  labs(title = 'Number of Service Connections')+
+    theme(legend.position = 'none', plot.title = element_text(size = 14, face = "bold"),
+        axis.text = element_text(size = 13),
+        axis.title.y = element_text(size = 13),
+        axis.title.x = element_text(size = 13))
+  
+ggplotly(g, tooltip = 'text')
+```
+
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=5}
+g <- data %>%
+  ggplot(aes(x = Pressure, y = Real.Losses, fill= ntiles_f, text = paste(Util,Year,sep = ' | ')))+
+  geom_point(alpha = 0.6, stroke= 0.25)+
+  facet_wrap(~ntiles_f, scales = c('free'), nrow = 1)+
+  theme_ipsum()+
+  theme(legend.position = 'none')+
+  xlab('Average Operating Pressure (PSI)')+
+  ylab('Real Losses (Million Gallons)')+
+  labs(title = 'System Pressure')+
+    theme(legend.position = 'none', plot.title = element_text(size = 14, face = "bold"),
+        axis.text = element_text(size = 13),
+        axis.title.y = element_text(size = 13),
+        axis.title.x = element_text(size = 13))
+  
+ggplotly(g, tooltip = 'text')
+```
+
