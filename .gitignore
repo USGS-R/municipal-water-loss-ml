@@ -41,3 +41,6 @@ vignettes/*.pdf
 # raw data
 Infrastructure_data/
 /out/
+
+#scratch scripts
+bone_yard.R

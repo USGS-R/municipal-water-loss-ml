@@ -1,6 +1,10 @@
 ---
 title: "Georgia Data Inventory"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
 ---
 
 ```{r setup, include=FALSE}
@@ -13,12 +17,18 @@ library(ggridges)
 library(hrbrthemes)
 library(gridExtra)
 library(plotly)
+library(viridis)
 ```
+
+This is a summary of some exploratory data analysis examining data from Georgia water audits from 2011-2019
 
 ```{r echo = FALSE}
 ga_all_yrs <- read_csv('C:/Users/ggorski/OneDrive - DOI/USGS_ML/WaterUse/github/municipal-water-loss-ml/1_data_inventory/out/georgia_all_years.csv',show_col_types = FALSE)
 ```
-##### A look at the water loss data for all years (2012-2019) for all municipalities broken down by population served  
+# Loss data by population served
+
+
+A look at the water loss data for all years (2012-2019) for all municipalities broken down by population served  
 <br>
 <br>
 
@@ -39,122 +49,128 @@ kable(x, digits = 1, col.names = c('Minimum Population','Maximum Population','Un
 
 ```
 
-```{r echo=FALSE, warning = FALSE, message = FALSE, fig.width=12, fig.height=4}
+```{r echo=FALSE, warning = FALSE, message = FALSE, fig.width=12, fig.height=10}
 data <- ga_all_yrs %>%
   filter(!is.na(Population)) %>%
   mutate(ntiles = ntile(Population,5)) %>%
   group_by(ntiles) %>%
   mutate(Supplied_per_Capita = Supplied/Population) %>%
-  mutate(Percent_water_loss = (Water.Losses/Supplied)*100)
+  mutate(Non_Revenue_water_per_capita = Non.Revenue.Water/Population) %>%
+  mutate(Real_Losses_per_capita = Real.Losses/Population) %>%
+  mutate(Percent_non_revenue_water = (Non.Revenue.Water/Supplied)*100) %>%
+  mutate(Pct_Real_Water_Loss = (Real.Losses/Supplied)*100)
 
 data$ntiles_f <- ordered(data$ntiles, levels = c(1,2,3,4,5), labels = c('< 4,853', '4,855 - 7,062', '7,073 - 13,050','13,260 - 28,025','> 28,1832'))
-  
+
+#Water supplied per capita  
 plot1 <- ggplot(data, aes(x = Supplied_per_Capita, y = ntiles_f, fill = ntiles_f))+
-  geom_density_ridges(rel_min_height = 0.005, scale = 0.75) +
+  #geom_density_ridges(rel_min_height = 0.01, scale = 1.35, alpha = 0.8) +
+  stat_density_ridges(alpha = 0.8, quantiles = 2, quantile_lines = TRUE)+
   theme_ipsum()+
   xlim(0,0.25)+
-  xlab('Gallons supplied per capita (Million Gallons/Yr/Person)')+
-  ylab('Population Served')+
+  xlab('Gallons supplied per capita \n (Million Gallons/Yr/Person)')+
+  ylab('Population served')+
   labs(title = 'Water supplied 2012-2019')+
-  theme(legend.position = 'none', plot.title = element_text(size = 14, face = "bold"),
-        axis.text = element_text(size = 13),
-        axis.title.y = element_text(size = 13),
-        axis.title.x = element_text(size = 13))
+  theme(legend.position = 'none', plot.title = element_text(size = 16, face = "bold"),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        axis.title.x = element_text(size = 14))
 
+#non-revenue water per capita
+plot2 <- ggplot(data, aes(x = Non_Revenue_water_per_capita, y = ntiles_f, fill = ntiles_f))+
+  #geom_density_ridges(rel_min_height = 0.01, scale = 1.35, alpha = 0.8) +
+  stat_density_ridges(alpha = 0.8, quantiles = 2, quantile_lines = TRUE)+
+  theme_ipsum()+
+  xlim(0,0.15)+
+  xlab('Non-Revenue water gallons per capita \n (Million Gallons/Yr/Person)')+
+  ylab('Population served')+
+  labs(title = 'Non-revenue water losses per capita 2012-2019')+
+  theme(legend.position = 'none', plot.title = element_text(size = 16, face = "bold"),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        axis.title.x = element_text(size = 14))
 
-plot2 <- ggplot(data, aes(x = Percent_water_loss, y = ntiles_f, fill = ntiles_f))+
-  geom_density_ridges(rel_min_height = 0.01, scale = 1.35) +
+#Non-Revenue water as a percent of supplied
+plot3 <- ggplot(data, aes(x = Percent_non_revenue_water, y = ntiles_f, fill = ntiles_f))+
+  #geom_density_ridges(rel_min_height = 0.01, scale = 1.35, alpha = 0.8) +
+  stat_density_ridges(alpha = 0.8, quantiles = 2, quantile_lines = TRUE)+
   theme_ipsum()+
   xlim(0,80)+
-  xlab('Water Lost (% of Supplied)')+
-  ylab('Population Served')+
+  xlab('Non-Revenue Water \n (% of Supplied)')+
+  ylab('Population served')+
+  labs(title = 'Non-revenue water 2012-2019')+
+  theme(legend.position = 'none', plot.title = element_text(size = 16, face = "bold"),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        axis.title.x = element_text(size = 14))
+
+#Real water loss as a percet of supplied
+plot4 <- ggplot(data, aes(x = Pct_Real_Water_Loss, y = ntiles_f, fill = ntiles_f))+
+  #geom_density_ridges(rel_min_height = 0.01, scale = 1.35, alpha = 0.8) +
+  stat_density_ridges(alpha = 0.8, quantiles = 2, quantile_lines = TRUE)+
+  theme_ipsum()+
+  xlim(0,80)+
+  xlab('Real water losses \n (% of Supplied)')+
+  ylab('Population served')+
   labs(title = 'Water lost 2012-2019')+
-  theme(legend.position = 'none', plot.title = element_text(size = 14, face = "bold"),
-        axis.text = element_text(size = 13),
-        axis.title.y = element_text(size = 13),
-        axis.title.x = element_text(size = 13))
+  theme(legend.position = 'none', plot.title = element_text(size = 16, face = "bold"),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        axis.title.x = element_text(size = 14))
 
-grid.arrange(plot1, plot2, ncol = 2)
+
+grid.arrange(plot1, plot2, plot3, plot4, ncol = 2)
 ```
 
 ***
+# Water losses through time
 
-##### Looking at the supply and loss data through time, hover over the dots to view the municipality. It doesn't look like there is a clear trend with time, but maybe the outliers are interesting?  
+Looking at the supply and loss data through time, hover over the dots to view the municipality. It doesn't look like there is a clear trend with time.  
 <br>
 <br>
 
-```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=4}
-t <- data %>%
-  filter(ntiles == 5) %>%
-  group_by(Year) %>%
-  pivot_longer(cols = c('Supplied','Water.Losses')) %>%
-  select(Year, Util, ntiles, name, value)
-
-plot_ly(t, x = ~Year, y = ~value, color = ~name, type = 'box', text = ~Util,colors = c('#0C4B8E','#BF382A'))%>% 
-  layout(boxmode = "group", 
-         xaxis = list(title='Year'), 
-         yaxis = list(title='Water (Million Gallons)'),
-         title = 'Water Supplied Municipalities Population > 28,183')
-```
-```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=4}
-t <- data %>%
-  filter(ntiles == 4) %>%
-  group_by(Year) %>%
-  pivot_longer(cols = c('Supplied','Water.Losses')) %>%
-  select(Year, Util, ntiles, name, value)
-
-plot_ly(t, x = ~Year, y = ~value, color = ~name, type = 'box', text = ~Util,colors = c('#0C4B8E','#BF382A'))%>% 
-  layout(boxmode = "group", 
-         xaxis = list(title='Year'), 
-         yaxis = list(title='Water (Million Gallons)'),
-         title = 'Water Supplied Municipalities Population 13,260 - 28,025')
-```
-
-```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=4}
-t <- data %>%
-  filter(ntiles == 3) %>%
-  group_by(Year) %>%
-  pivot_longer(cols = c('Supplied','Water.Losses')) %>%
-  select(Year, Util, ntiles, name, value)
-
-plot_ly(t, x = ~Year, y = ~value, color = ~name, type = 'box', text = ~Util,colors = c('#0C4B8E','#BF382A'))%>% 
-  layout(boxmode = "group", 
-         xaxis = list(title='Year'), 
-         yaxis = list(title='Water (Million Gallons)'),
-         title = 'Water Supplied Municipalities Population 7,073 - 13,050')
-```
-
-```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=4}
-t <- data %>%
-  filter(ntiles == 2) %>%
-  group_by(Year) %>%
-  pivot_longer(cols = c('Supplied','Water.Losses')) %>%
-  select(Year, Util, ntiles, name, value)
-
-plot_ly(t, x = ~Year, y = ~value, color = ~name, type = 'box', text = ~Util,colors = c('#0C4B8E','#BF382A'))%>% 
-  layout(boxmode = "group", 
-         xaxis = list(title='Year'), 
-         yaxis = list(title='Water (Million Gallons)'),
-         title = 'Water Supplied Municipalities Population 4,855 - 7,062')
-```
-
-```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=4}
-t <- data %>%
-  filter(ntiles == 1) %>%
-  group_by(Year) %>%
-  pivot_longer(cols = c('Supplied','Water.Losses')) %>%
-  select(Year, Util, ntiles, name, value)
-
-plot_ly(t, x = ~Year, y = ~value, color = ~name, type = 'box', text = ~Util,colors = c('#0C4B8E','#BF382A'))%>% 
-  layout(boxmode = "group", 
-         xaxis = list(title='Year'), 
-         yaxis = list(title='Water (Million Gallons)'),
-         title = 'Water Supplied Municipalities Population < 4,853')
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=10}
+p <- ga_all_yrs %>%
+  filter(!is.na(Population)) %>%
+  mutate(ntiles = ntile(Population,5)) %>%
+  mutate(ntiles_f = ordered(ntiles, levels = c(1,2,3,4,5), 
+                          labels = c('Population < 4,853', 'Population 4,855 - 7,062', 'Population 7,073 - 13,050',
+                                     'Population 13,260 - 28,025','Population > 28,1832'))) %>%
+  select(Year, Util, Population, Supplied, Non.Revenue.Water, Real.Losses, Apparent.Losses, ntiles_f) %>%
+  mutate(Unbilled.Authorized.Consumption = Non.Revenue.Water-(Real.Losses+Apparent.Losses)) %>%
+  mutate(Real.Losses.pct = (Real.Losses/Supplied), Apparent.Losses.pct = (Apparent.Losses/Supplied), 
+         Unbilled.Authorized.Consumption.pct = (Unbilled.Authorized.Consumption/Supplied))%>%
+  group_by(ntiles_f, Year) %>%
+  summarise(Real.Losses = median(Real.Losses.pct), Apparent.Losses = median(Apparent.Losses.pct), 
+            Unbilled.Authorized.Consumption = median(Unbilled.Authorized.Consumption.pct))%>%
+  #filter(Util == 'Adel') %>%
+  pivot_longer(cols = Real.Losses:Unbilled.Authorized.Consumption) %>%
+  ggplot(aes(x = Year, y = value, fill = name, text = name))+
+  geom_area()+
+  scale_fill_viridis(discrete = TRUE, name = 'Non-Revenue Category')+
+  #geom_line(data = supp_data, aes(x = Year, y = Supplied))+
+  theme_bw()+
+  theme(axis.text = element_text(size = 14),
+            axis.title = element_text(size = 14),
+            legend.title = element_text(size=14), #change legend title font size
+            legend.text = element_text(size=14),
+           strip.text.x = element_text(size = 14),
+            plot.title = element_text(size=16, face = "bold"))+
+  ggtitle('Non-Revenue Water by Municipality Population')+
+  ylab('Water Losses as a fraction of water supplied')+
+  facet_wrap(.~ntiles_f, ncol = 1, scales = "fixed")
+p
 ```
 
 ***
+# Potential drivers of water loss
 
-##### Crossplots of losses with length of mains, pressure, and number of connections broken down by population served  
+
+Crossplots of losses with length of mains, pressure, and number of connections broken down by population served  
 <br>
 
 ```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=5}
