@@ -1,10 +1,13 @@
 ---
-title: "Georgia Data Inventory"
+title: "Georgia Water Loss Data Inventory"
 output: 
   html_document:
     toc: true
-    toc_float: true
     number_sections: true
+    toc_float:
+      collapsed: false
+    df_print: paged
+    
 ---
 
 ```{r setup, include=FALSE}
@@ -18,11 +21,13 @@ library(hrbrthemes)
 library(gridExtra)
 library(plotly)
 library(viridis)
+
 ```
+
 
 This is a summary of some exploratory data analysis examining data from Georgia water audits from 2011-2019
 
-```{r echo = FALSE}
+```{r echo = FALSE, cache=TRUE}
 ga_all_yrs <- read_csv('C:/Users/ggorski/OneDrive - DOI/USGS_ML/WaterUse/github/municipal-water-loss-ml/1_data_inventory/out/georgia_all_years.csv',show_col_types = FALSE)
 ```
 # Loss data by population served
@@ -32,24 +37,24 @@ A look at the water loss data for all years (2012-2019) for all municipalities b
 <br>
 <br>
 
-```{r echo=FALSE, results='asis'}
+```{r echo=FALSE, results='asis', cache=TRUE}
 
 x <- ga_all_yrs %>%
   filter(!is.na(Population)) %>%
   mutate(ntiles = ntile(Population,5)) %>%
   group_by(ntiles) %>%
-  summarise(min_pop = min(Population), max_pop = max(Population), unique_municipalities = n_distinct(WSID), mean_supplied = mean(Supplied), mean_lost = mean(Water.Losses)) %>%
-  mutate(mean_lost_frac = (mean_lost/mean_supplied)*100) %>%
-  select(!c(mean_lost, ntiles))
+  summarise(min_pop = min(Population), max_pop = max(Population), unique_municipalities = n_distinct(WSID), median_supplied = median(Supplied), median_nrl = median(Non.Revenue.Water)) %>%
+  mutate(median_nrl_frac = (median_nrl/median_supplied)*100) %>%
+  select(!c(median_nrl, ntiles))
 
 #row.names(x) <- c('Least Populous','','','','Most Populous')
-kable(x, digits = 1, col.names = c('Minimum Population','Maximum Population','Unique Municipalities','Mean Supplied Water (Mil Gal/Yr)','Mean Water Lost (%)'),
+kable(x, digits = 1, col.names = c('Minimum population','Maximum population','Unique municipalities','Median supplied water (Mil Gal/Yr)','Median non-revenue water (%)'),
         row.names = FALSE)
 
 
 ```
 
-```{r echo=FALSE, warning = FALSE, message = FALSE, fig.width=12, fig.height=10}
+```{r echo=FALSE, warning = FALSE, message = FALSE, fig.width=12, fig.height=10, cache=TRUE}
 data <- ga_all_yrs %>%
   filter(!is.na(Population)) %>%
   mutate(ntiles = ntile(Population,5)) %>%
@@ -133,7 +138,7 @@ Looking at the supply and loss data through time, hover over the dots to view th
 <br>
 <br>
 
-```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=10}
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=10, cache=TRUE}
 p <- ga_all_yrs %>%
   filter(!is.na(Population)) %>%
   mutate(ntiles = ntile(Population,5)) %>%
@@ -167,14 +172,69 @@ p
 ```
 
 ***
+# Cost of water losses
+
+```{r echo=FALSE, warning = FALSE, message = FALSE, fig.width=12, fig.height=5, cache=TRUE}
+
+plot5 <- ga_all_yrs %>%
+  filter(Real.Losses.Cost >=0) %>%
+  filter(!is.na(Population)&!is.na(Real.Losses.Cost)) %>%
+  mutate(ntiles = ntile(Population,5)) %>%
+  mutate(ntiles_f = ordered(ntiles, levels = c(1,2,3,4,5), 
+                            labels = c('Population < 4,853', 'Population 4,855 - 7,062', 'Population 7,073 - 13,050',
+                                       'Population 13,260 - 28,025','Population > 28,1832'))) %>%
+  mutate(Real.Losses.Cost.Thou = Real.Losses.Cost/1000) %>%
+  ggplot(aes(y = ntiles_f, x = Real.Losses.Cost.Thou, fill = ntiles_f, color = ntiles_f))+
+  stat_density_ridges(alpha = 0.8, quantiles = 2, quantile_lines = TRUE)+
+  theme_ipsum()+
+  xlim(0,500)+
+  xlab('Cost of real water losses \n (Thousand $)')+
+  ylab('Population served')+
+  labs(title = 'Annual cost of \n real water losses 2012-2019')+
+  theme(legend.position = 'none', plot.title = element_text(size = 16, face = "bold"),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        axis.title.x = element_text(size = 14))+
+  scale_color_manual(values = rep('black',5), guide = "none") #+
+  #scale_fill_manual(values = my_pal, guide = "none")
+
+plot6 <- ga_all_yrs %>%
+  filter(Real.Losses.Cost >=0) %>%
+  filter(!is.na(Population)&!is.na(Real.Losses.Cost)&!is.na(Operating.Cost)) %>%
+  mutate(ntiles = ntile(Population,5)) %>%
+  mutate(ntiles_f = ordered(ntiles, levels = c(1,2,3,4,5), 
+                            labels = c('Population < 4,853', 'Population 4,855 - 7,062', 'Population 7,073 - 13,050',
+                                       'Population 13,260 - 28,025','Population > 28,1832'))) %>%
+  mutate(Real.Losses.Cost.Frac = (Real.Losses.Cost/Operating.Cost)*100) %>%
+  ggplot(aes(y = ntiles_f, x = Real.Losses.Cost.Frac, fill = ntiles_f, color = ntiles_f))+
+  stat_density_ridges(alpha = 0.8, quantiles = 2, quantile_lines = TRUE)+
+  theme_ipsum()+
+  xlim(0,30)+
+  xlab('Cost of real water losses \n (% of operating cost)')+
+  ylab('Population served')+
+  labs(title = 'Annual cost of \n real water losses 2012-2019')+
+  theme(legend.position = 'none', plot.title = element_text(size = 16, face = "bold"),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        axis.title.x = element_text(size = 14))+
+  scale_color_manual(values = rep('black',5), guide = "none")#+
+  #scale_fill_manual(values = my_pal, guide = "none")
+
+grid.arrange(plot5, plot6, nrow = 1)
+```
+
+***
 # Potential drivers of water loss
 
 
 Crossplots of losses with length of mains, pressure, and number of connections broken down by population served  
 <br>
 
-```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=5}
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=5, cache=TRUE}
 g <- data %>%
+  filter(Real.Losses >=0) %>%
   ggplot(aes(x = Length.of.Mains, y = Real.Losses, fill= ntiles_f, text = paste(Util,Year,sep = ' | ')))+
   geom_point(alpha = 0.6, stroke= 0.25)+
   facet_wrap(~ntiles_f, scales = c('free'), nrow = 1)+
@@ -191,8 +251,9 @@ g <- data %>%
 ggplotly(g, tooltip = 'text')
 ```
 
-```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=5}
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=5, cache=TRUE}
 g <- data %>%
+  filter(Real.Losses >=0) %>%
   ggplot(aes(x = Service.COnnections, y = Real.Losses, fill= ntiles_f, text = paste(Util,Year,sep = ' | ')))+
   geom_point(alpha = 0.6, stroke= 0.25)+
   facet_wrap(~ntiles_f, scales = c('free'), nrow = 1)+
@@ -210,8 +271,9 @@ ggplotly(g, tooltip = 'text')
 ```
 
 
-```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=5}
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.width=10, fig.height=5, cache=TRUE}
 g <- data %>%
+  filter(Real.Losses >=0) %>%
   ggplot(aes(x = Pressure, y = Real.Losses, fill= ntiles_f, text = paste(Util,Year,sep = ' | ')))+
   geom_point(alpha = 0.6, stroke= 0.25)+
   facet_wrap(~ntiles_f, scales = c('free'), nrow = 1)+

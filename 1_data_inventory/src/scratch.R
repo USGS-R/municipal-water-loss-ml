@@ -92,6 +92,7 @@ library(viridis)
 library(gghalves)
 library(ggdist)
 library(readr)
+library(ggridges)
 
 p <- ga_all_yrs %>%
   filter(!is.na(Population)) %>%
@@ -168,3 +169,66 @@ p <- ga_all_yrs %>%
   scale_fill_manual(values = my_pal, guide = "none")
 
 p
+
+
+#cost of water losses
+p <- ga_all_yrs %>%
+  filter(Real.Losses.Cost >=0) %>%
+  filter(!is.na(Population)&!is.na(Real.Losses.Cost)) %>%
+  mutate(ntiles = ntile(Population,5)) %>%
+  mutate(ntiles_f = ordered(ntiles, levels = c(1,2,3,4,5), 
+                            labels = c('Population < 4,853', 'Population 4,855 - 7,062', 'Population 7,073 - 13,050',
+                                       'Population 13,260 - 28,025','Population > 28,1832'))) %>%
+  mutate(Real.Losses.Cost.Thou = Real.Losses.Cost/1000) %>%
+  ggplot(aes(y = ntiles_f, x = Real.Losses.Cost.Thou, fill = ntiles_f, color = ntiles_f))+
+  stat_density_ridges(alpha = 0.8, quantiles = 2, quantile_lines = TRUE)+
+  theme_ipsum()+
+  xlim(0,500)+
+  xlab('Cost of real water losses \n (Thousand $)')+
+  ylab('Population served')+
+  labs(title = 'Annual cost of real water losses 2012-2019')+
+  theme(legend.position = 'none', plot.title = element_text(size = 16, face = "bold"),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        axis.title.x = element_text(size = 14))+
+  scale_color_manual(values = rep('black',5), guide = "none") +
+  scale_fill_manual(values = my_pal, guide = "none")
+p
+
+p <- ga_all_yrs %>%
+  filter(Real.Losses.Cost >=0) %>%
+  filter(!is.na(Population)&!is.na(Real.Losses.Cost)&!is.na(Operating.Cost)) %>%
+  mutate(ntiles = ntile(Population,5)) %>%
+  mutate(ntiles_f = ordered(ntiles, levels = c(1,2,3,4,5), 
+                            labels = c('Population < 4,853', 'Population 4,855 - 7,062', 'Population 7,073 - 13,050',
+                                       'Population 13,260 - 28,025','Population > 28,1832'))) %>%
+  mutate(Real.Losses.Cost.Frac = (Real.Losses.Cost/Operating.Cost)*100) %>%
+  ggplot(aes(y = ntiles_f, x = Real.Losses.Cost.Frac, fill = ntiles_f, color = ntiles_f))+
+  stat_density_ridges(alpha = 0.8, quantiles = 2, quantile_lines = TRUE)+
+  theme_ipsum()+
+  xlim(0,30)+
+  xlab('Cost of real water losses \n (% of operating cost)')+
+  ylab('Population served')+
+  labs(title = 'Annual cost of real water losses 2012-2019')+
+  theme(legend.position = 'none', plot.title = element_text(size = 16, face = "bold"),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        axis.title.x = element_text(size = 14))+
+  scale_color_manual(values = rep('black',5), guide = "none") +
+  scale_fill_manual(values = my_pal, guide = "none")
+p
+
+
+ga_all_yrs %>%
+  filter(!is.na(Population)&!is.na(Apparent.Losses.Cost)&!is.na(Real.Losses.Cost)) %>%
+  mutate(ntiles = ntile(Population,5)) %>%
+  group_by(ntiles) %>%
+  summarise(med_real_losses_cost = median(Real.Losses.Cost), med_apparent_losses_cost = median(Apparent.Losses.Cost))
+
+ga_all_yrs %>%
+  filter(!is.na(Population)&!is.na(Apparent.Losses)&!is.na(Real.Losses)) %>%
+  mutate(ntiles = ntile(Population,5)) %>%
+  group_by(ntiles) %>%
+  summarise(med_real_losses = median(Real.Losses), med_apparent_losses = median(Apparent.Losses))

@@ -5,6 +5,9 @@
 # Session Data files
 .RData
 
+# Publication files
+/rsconnect/
+/*_files/
 # User-specific files
 .Ruserdata
 
@@ -44,3 +47,4 @@ Infrastructure_data/
 
 #scratch scripts
 bone_yard.R
+*scratch.R
