@@ -48,3 +48,4 @@ Infrastructure_data/
 #scratch scripts
 bone_yard.R
 *scratch.R
+.Rproj.user
